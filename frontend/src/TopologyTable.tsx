@@ -24,31 +24,88 @@ export const TopologyTable: React.FC<Props> = ({ data, loading, resourceFilter =
 
 
     // Transform raw data into a tree structure compatible with our specific Node type
+    // Transform raw data into a tree structure compatible with our specific Node type
     // resourceFilter is passed for future filtering logic
     const treeData = useMemo(() => {
-        // TODO: Implement actual filtering based on resourceFilter when needed
-        console.debug('Current resource filter:', resourceFilter);
-        return data.map((region) => ({
-            kind: 'region' as const,
-            data: region,
-            subRows: region.vpcs.map((vpc) => ({
-                kind: 'vpc' as const,
-                data: vpc,
-                region: region.region,
-                subRows: vpc.subnets.map((subnet) => ({
-                    kind: 'subnet' as const,
-                    data: subnet,
-                    region: region.region,
-                    subRows: subnet.instances.map((inst) => ({
-                        kind: 'instance' as const,
-                        data: inst,
+        return data.map((region) => {
+            // Filter Logic:
+            // - If filter is 'vpc', we only want vpcs.
+            // - If filter is 'subnet', we want vpcs -> subnets.
+            // - If filter is 'ec2' or 'sg', we want full depth.
+            // - If filter is 'all', full depth.
+
+            const vpcs = region.vpcs.map((vpc) => {
+                // For 'vpc' filter, we don't need subnets
+                if (resourceFilter === 'vpc') {
+                    return {
+                        kind: 'vpc' as const,
+                        data: vpc,
                         region: region.region,
-                        subRows: [], // Leaf
-                    })),
-                })),
-            })),
-        }));
+                        subRows: [],
+                    };
+                }
+
+                const subnets = vpc.subnets.map((subnet) => {
+                    // For 'subnet' filter, we don't need instances
+                    if (resourceFilter === 'subnet') {
+                        return {
+                            kind: 'subnet' as const,
+                            data: subnet,
+                            region: region.region,
+                            subRows: [],
+                        };
+                    }
+
+                    // For 'ec2' or 'sg' or 'all', we include instances
+                    return {
+                        kind: 'subnet' as const,
+                        data: subnet,
+                        region: region.region,
+                        subRows: subnet.instances.map((inst) => ({
+                            kind: 'instance' as const,
+                            data: inst,
+                            region: region.region,
+                            subRows: [], // Leaf
+                        })),
+                    };
+                });
+
+                return {
+                    kind: 'vpc' as const,
+                    data: vpc,
+                    region: region.region,
+                    subRows: subnets,
+                };
+            });
+
+            return {
+                kind: 'region' as const,
+                data: region,
+                subRows: vpcs,
+            };
+        });
     }, [data, resourceFilter]);
+
+    // Auto-expansion effect
+    React.useEffect(() => {
+        if (resourceFilter === 'all') {
+            // By default, maybe just expand regions? or nothing.
+            // setExpanded({}); 
+        } else if (resourceFilter === 'vpc') {
+            // Expand regions to show VPCs
+            setExpanded({ true: true }); // This might be too aggressive if valid syntax, usually keys are row IDs. 
+            // Since we don't have row IDs easily here before table creation, we might rely on the table state or default expanded.
+            // Actually, react-table uses row values.
+            // Let's rely on user interaction for 'vpc' and 'subnet' roughly, OR expandable 'true' for all.
+            setExpanded(true); // Expand all rows
+        } else if (resourceFilter === 'subnet') {
+            setExpanded(true);
+        } else if (resourceFilter === 'ec2' || resourceFilter === 'sg') {
+            setExpanded(true);
+        } else {
+            setExpanded({});
+        }
+    }, [resourceFilter]);
 
     const columns = useMemo<ColumnDef<any>[]>(
         () => [
