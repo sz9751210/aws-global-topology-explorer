@@ -13,8 +13,8 @@ services:
       - AWS_SESSION_TOKEN
       - AWS_DEFAULT_REGION
     volumes:
-      # Optional: Mount AWS credentials from host if not using env vars
-      - ~/.aws:/root/.aws:ro
+      # Mount AWS credentials from host using configured path
+      - ${AWS_CREDENTIALS_DIR:-~/.aws}:/root/.aws:ro
 
   frontend:
     build: ./frontend

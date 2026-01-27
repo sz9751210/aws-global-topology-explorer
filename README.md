@@ -1,56 +1,99 @@
-# AWS Global Topology Explorer
+# AWS Global Topology Explorer 🌍
 
-這是一個用於全域檢視 AWS 網路資源拓撲的 IDP 內部工具。它可以跨 Region 掃描 VPC、Subnet、EC2 實例，並視覺化 Security Group 的關聯。
+> A powerful visualization tool for AWS infrastructure, offering a global view of your network topology across all regions.
 
-## 功能特色 (Features)
+![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
+![Python](https://img.shields.io/badge/Backend-Python_3.9-yellow.svg)
+![React](https://img.shields.io/badge/Frontend-React_18-blue.svg)
+![Docker](https://img.shields.io/badge/Deployment-Docker-2496ED.svg)
 
-*   **全域掃描:** 自動遍歷所有 Opt-in 的 AWS Regions。
-*   **階層化視圖:** Region -> VPC -> Subnet -> EC2。
-*   **即時安全規則:** 解析並展開 EC2 的 Inbound Security Group Rules，自動將 SG ID 轉換為可讀的名稱。
-*   **容器化部署:** 支援 Docker Compose 一鍵啟動。
+[繁體中文 (Traditional Chinese)](./README_zh-TW.md) | [English](./README.md)
 
-## 快速開始 (Quick Start)
+## 📖 Overview
 
-### 使用 Docker Compose (推薦)
+The AWS Global Topology Explorer solves the visibility gap in AWS multi-region environments. Instead of clicking through regions one by one, this tool scans your entire AWS footprint and visualizes the relationships between **Regions**, **VPCs**, **Subnets**, and **EC2 Instances** in a single interactive dashboard.
 
-確保您已安裝 Docker 與 Docker Compose，並且本機已設定 AWS Credentials (環境變數或 `~/.aws/credentials`)。
+It specifically focuses on **Security Group** visualization, resolving complex rule references (like SG IDs) into human-readable names to simplify security auditing.
 
-1.  **啟動服務:**
+## ✨ Features
+
+- **🌐 Global Discovery**: Automatically detects and scans all enabled (opt-in) AWS Regions.
+- **🏗️ Hierarchical Topology**: Visualizes resources in a tree structure: `Region -> VPC -> Subnet -> EC2`.
+- **🛡️ Intelligent Security Analysis**:
+    - Aggregates all Security Group rules for each instance.
+    - Resolves Source Security Group IDs to their Names (e.g., shows `alb-sg` instead of `sg-01234`).
+    - Merges rules from multiple attached Security Groups.
+- **🚀 Dockerized**: Ready for instant deployment with Docker Compose.
+- **⚡ High Performance**: Uses concurrent threading to scan multiple regions in parallel.
+
+## 🏗 Architecture
+
+The system follows a modern client-server architecture:
+
+```mermaid
+graph TD
+    User[Browser] -->|HTTP/80| Nginx[Frontend Container (Nginx + React)]
+    Nginx -->|Proxy /api| API[Backend Container (FastAPI)]
+    API -->|Boto3| AWS[AWS Cloud API]
+```
+
+- **Backend**: Python (FastAPI, Boto3) handles parallel scanning and data normalization.
+- **Frontend**: React (Vite, TanStack Table, Tailwind CSS) renders the interactive tree grid.
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Docker & Docker Compose
+- AWS Credentials (Access Key & Secret Key) with a user/role that has `Read-Only` access (specifically `ec2:Describe*`).
+
+### Installation via Docker Compose
+
+1.  **Clone the repository:**
     ```bash
-    export AWS_PROFILE=your-profile  # 如果需要指定 Profile
-    docker-compose up --build
+    git clone https://github.com/your-username/aws-global-topology-explorer.git
+    cd aws-global-topology-explorer
     ```
-    *注意: 如果使用 `~/.aws/credentials`，docker-compose.yml 預設會掛載此路徑。*
 
-2.  **存取應用:**
-    打開瀏覽器訪問 `http://localhost`
+2.  **Configure Environment:**
+    Copy the example configuration file.
+    ```bash
+    cp .env.example .env
+    ```
+    Open `.env` and set `AWS_CREDENTIALS_DIR` to your local `.aws` folder path (e.g., `~/.aws`).
 
-### 手動開發 (Manual Setup)
+3.  **Start Services:**
+    ```bash
+    docker-compose up --build -d
+    ```
+    This will start:
+    - Backend API on port `8000`
+    - Frontend interface on port `80`
 
-#### Backend (Python / FastAPI)
+4.  **Access Dashboard:**
+    Open your browser and navigate to [http://localhost](http://localhost).
+
+## 🛠 Manual Development Setup
+
+If you wish to run the services locally without Docker:
+
+### Backend
 ```bash
 cd backend
+python3 -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
 uvicorn main:app --reload
 ```
-API 將在 `http://localhost:8000` 運行。
+API will be available at `http://localhost:8000/docs`.
 
-#### Frontend (React / Vite)
+### Frontend
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
-前端將在 `http://localhost:5173` 運行 (需確保 `vite.config.ts` 中的 Proxy 設定正確指向後端)。
+Frontend will be available at `http://localhost:5173`. Ensure `vite.config.ts` proxies `/api` to port `8000`.
 
-## 架構說明 (Architecture)
+## 📜 License
 
-*   **Backend:** Python 3.9 + Boto3 + FastAPI + Concurrent Futures (多執行緒並發掃描)。
-*   **Frontend:** React + TypeScript + TanStack Table + Tailwind CSS。
-*   **Infrastructure:** Nginx 作為 Reverse Proxy，將 `/api` 請求轉發至 Backend。
-
-## 專案結構 (Project Structure)
-
-*   `backend/`: Python 原始碼, Dockerfile
-*   `frontend/`: React 原始碼, Dockerfile, Nginx 設定
-*   `docker-compose.yml`: 服務編排設定
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
