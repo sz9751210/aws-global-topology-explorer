@@ -5,9 +5,8 @@ import {
     getExpandedRowModel,
     ColumnDef,
     flexRender,
-    Row,
 } from '@tanstack/react-table';
-import { RegionData, TopologyNode, Instance } from './types';
+import { RegionData, Instance } from './types';
 import { DetailPanel } from './DetailPanel';
 
 // --- Icons ---
@@ -55,7 +54,7 @@ export const TopologyTable: React.FC<Props> = ({ data }) => {
                     const node = row.original;
 
                     let content = null;
-                    let icon = null;
+
                     let style = "";
 
                     if (node.kind === 'region') {

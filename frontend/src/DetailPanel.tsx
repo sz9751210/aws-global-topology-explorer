@@ -1,5 +1,5 @@
 import React from 'react';
-import { Instance, SecurityRule } from './types';
+import { Instance } from './types';
 
 interface Props {
     instance: Instance;
