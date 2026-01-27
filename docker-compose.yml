@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    container_name: aws_topology_backend
+    ports:
+      - "8000:8000"
+    environment:
+      # AWS Credentials will be passed from host environment
+      - AWS_ACCESS_KEY_ID
+      - AWS_SECRET_ACCESS_KEY
+      - AWS_SESSION_TOKEN
+      - AWS_DEFAULT_REGION
+    volumes:
+      # Optional: Mount AWS credentials from host if not using env vars
+      - ~/.aws:/root/.aws:ro
+
+  frontend:
+    build: ./frontend
+    container_name: aws_topology_frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
