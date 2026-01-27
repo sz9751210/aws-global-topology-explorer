@@ -109,20 +109,30 @@ export const TopologyTable: React.FC<Props> = ({ data, loading, resourceFilter =
                     }));
                 }
 
+                // Filter out empty VPCs for EC2 and SG views to keep the interface clean
+                if ((resourceFilter === 'ec2' || resourceFilter === 'sg') && vpcSubRows.length === 0) {
+                    return null;
+                }
+
                 return {
                     kind: 'vpc' as const,
                     data: vpc,
                     region: region.region,
                     subRows: vpcSubRows,
                 };
-            });
+            }).filter(Boolean) as any[];
+
+            // Filter out empty Regions for EC2/SG views
+            if ((resourceFilter === 'ec2' || resourceFilter === 'sg') && vpcs.length === 0) {
+                return null;
+            }
 
             return {
                 kind: 'region' as const,
                 data: region,
                 subRows: vpcs,
             };
-        });
+        }).filter(Boolean) as any[]; // Top-level filter to remove null regions
     }, [data, resourceFilter]);
 
     // Auto-expansion effect
