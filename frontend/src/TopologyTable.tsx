@@ -8,18 +8,18 @@ import {
 } from '@tanstack/react-table';
 import { RegionData, Instance } from './types';
 import { DetailPanel } from './DetailPanel';
-
-// --- Icons ---
-const ChevronRight = () => <span className="mr-2">▶</span>;
-const ChevronDown = () => <span className="mr-2">▼</span>;
+import { ChevronRight, ChevronDown, Server, Box, Layers, MapPin, Search } from 'lucide-react';
+import clsx from 'clsx';
 
 interface Props {
     data: RegionData[];
+    loading?: boolean;
 }
 
-export const TopologyTable: React.FC<Props> = ({ data }) => {
+export const TopologyTable: React.FC<Props> = ({ data, loading }) => {
     const [expanded, setExpanded] = useState({});
     const [selectedInstance, setSelectedInstance] = useState<Instance | null>(null);
+
 
     // Transform raw data into a tree structure compatible with our specific Node type
     const treeData = useMemo(() => {
@@ -49,66 +49,95 @@ export const TopologyTable: React.FC<Props> = ({ data }) => {
         () => [
             {
                 accessorKey: 'name',
-                header: 'Resource Name / ID',
+                header: 'Resource Hierarchy',
                 cell: ({ row }) => {
                     const node = row.original;
-
                     let content = null;
-
+                    let icon = null;
                     let style = "";
 
                     if (node.kind === 'region') {
-                        content = <span className="font-bold text-lg">{node.data.region}</span>;
-                        style = "bg-gray-100";
+                        content = <span className="font-bold text-slate-800">{node.data.region}</span>;
+                        icon = <MapPin size={16} className="text-slate-400" />;
+                        style = "bg-slate-50 border-l-4 border-slate-300";
                     } else if (node.kind === 'vpc') {
-                        content = <span>🌐 VPC: {node.data.name} <span className="text-gray-500 text-sm">({node.data.id})</span></span>;
-                        style = "pl-4";
+                        content = (
+                            <div className="flex flex-col leading-tight">
+                                <span className="font-medium text-slate-700">{node.data.name}</span>
+                                <span className="text-[10px] text-slate-400 font-mono">{node.data.id}</span>
+                            </div>
+                        );
+                        icon = <Box size={16} className="text-indigo-400" />;
+                        style = "pl-8 border-l border-slate-100 hover:bg-slate-50";
                     } else if (node.kind === 'subnet') {
-                        content = <span>🕸️ Subnet: {node.data.name} <span className="text-gray-500 text-sm">({node.data.az})</span></span>;
-                        style = "pl-8 text-sm";
+                        content = (
+                            <div className="flex flex-col leading-tight">
+                                <span className="text-slate-600 text-sm">{node.data.name}</span>
+                                <span className="text-[10px] text-slate-400 font-mono">{node.data.az}</span>
+                            </div>
+                        );
+                        icon = <Layers size={14} className="text-cyan-500" />;
+                        style = "pl-14 border-l border-slate-100 hover:bg-slate-50";
                     } else if (node.kind === 'instance') {
                         content = (
-                            <span
-                                className="cursor-pointer text-blue-600 hover:underline flex items-center"
+                            <button
+                                className="text-left w-full group"
                                 onClick={() => setSelectedInstance(node.data)}
                             >
-                                🖥️ {node.data.name} <span className="text-gray-500 text-xs ml-2">({node.data.id})</span>
-                            </span>
+                                <div className="flex items-center justify-between">
+                                    <div className="flex flex-col leading-tight">
+                                        <span className="font-medium text-sm text-indigo-600 group-hover:text-indigo-800 transition-colors">
+                                            {node.data.name || 'Unnamed Instance'}
+                                        </span>
+                                        <span className="text-[10px] text-slate-400 font-mono">{node.data.id}</span>
+                                    </div>
+                                    <ChevronRight size={14} className="text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                </div>
+                            </button>
                         );
-                        style = "pl-12 text-sm";
+                        icon = <Server size={14} className={node.data.state === 'running' ? "text-emerald-500" : "text-slate-400"} />;
+                        style = "pl-20 border-l border-slate-100 hover:bg-indigo-50 cursor-pointer transition-colors";
                     }
 
                     return (
-                        <div className={`flex items-center ${style}`}>
-                            {row.getCanExpand() && (
+                        <div className={`flex items-center gap-3 py-2 px-4 h-full ${style}`}>
+                            {row.getCanExpand() ? (
                                 <button
                                     onClick={row.getToggleExpandedHandler()}
-                                    className="cursor-pointer w-6 h-6 flex items-center justify-center focus:outline-none"
+                                    className="p-1 hover:bg-slate-200 rounded text-slate-500 transition-colors focus:outline-none"
                                 >
-                                    {row.getIsExpanded() ? <ChevronDown /> : <ChevronRight />}
+                                    {row.getIsExpanded() ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                                 </button>
+                            ) : (
+                                <span className="w-6" /> // Spacer
                             )}
-                            {!row.getCanExpand() && <span className="w-6" />}
-                            {content}
+                            {icon}
+                            <div className="flex-1">{content}</div>
                         </div>
                     );
                 },
             },
             {
                 accessorKey: 'details',
-                header: 'Details',
+                header: 'Network & Status',
                 cell: ({ row }) => {
                     const node = row.original;
-                    if (node.kind === 'vpc') return <span className="text-gray-600">{node.data.cidr}</span>;
-                    if (node.kind === 'subnet') return <span className="text-gray-600">{node.data.cidr}</span>;
+                    if (node.kind === 'vpc') return <span className="font-mono text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">{node.data.cidr}</span>;
+                    if (node.kind === 'subnet') return <span className="font-mono text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">{node.data.cidr}</span>;
                     if (node.kind === 'instance') {
                         return (
-                            <div className="flex gap-2 text-xs">
-                                <span className={`px-2 py-0.5 rounded text-white ${node.data.state === 'running' ? 'bg-green-500' : 'bg-gray-400'}`}>
+                            <div className="flex gap-2 text-xs items-center">
+                                <span
+                                    className={clsx(
+                                        "px-2 py-0.5 rounded-full font-medium flex items-center gap-1.5",
+                                        node.data.state === 'running' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                                    )}
+                                >
+                                    <span className={clsx("w-1.5 h-1.5 rounded-full", node.data.state === 'running' ? 'bg-emerald-500' : 'bg-slate-400')}></span>
                                     {node.data.state}
                                 </span>
-                                <span className="bg-blue-100 px-2 py-0.5 rounded border border-blue-200">{node.data.type}</span>
-                                <span className="text-gray-500">{node.data.private_ip}</span>
+                                <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-100 font-mono">{node.data.type}</span>
+                                <span className="text-slate-500 font-mono">{node.data.private_ip}</span>
                             </div>
                         );
                     }
@@ -132,19 +161,30 @@ export const TopologyTable: React.FC<Props> = ({ data }) => {
     });
 
     return (
-        <div className="flex h-screen bg-white">
+        <div className="flex flex-1 h-full overflow-hidden bg-white">
             {/* Main Table Area */}
-            <div className="flex-1 overflow-auto p-4 border-r border-gray-200">
-                <h1 className="text-2xl font-bold mb-4 text-gray-800">AWS Global Topology Explorer</h1>
-                <div className="shadow border-b border-gray-200 sm:rounded-lg">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
+            <div className="flex-1 flex flex-col min-w-0 border-r border-slate-200">
+                {/* Search Bar (Visual Only for now) */}
+                <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+                    <Search size={16} className="text-slate-400" />
+                    <input
+                        type="text"
+                        placeholder="Filter logic to be implemented..."
+                        className="bg-transparent border-none focus:ring-0 text-sm w-full placeholder-slate-400 text-slate-600"
+                        disabled
+                    />
+                </div>
+
+                <div className="flex-1 overflow-auto custom-scrollbar">
+                    <table className="min-w-full divide-y divide-slate-100">
+                        <thead className="bg-slate-50 sticky top-0 z-10 shadow-sm">
                             {table.getHeaderGroups().map((headerGroup) => (
                                 <tr key={headerGroup.id}>
                                     {headerGroup.headers.map((header) => (
                                         <th
                                             key={header.id}
-                                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                                            className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200"
+                                            style={{ width: header.id === 'name' ? '60%' : '40%' }}
                                         >
                                             {flexRender(header.column.columnDef.header, header.getContext())}
                                         </th>
@@ -152,11 +192,11 @@ export const TopologyTable: React.FC<Props> = ({ data }) => {
                                 </tr>
                             ))}
                         </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
+                        <tbody className="bg-white divide-y divide-slate-50">
                             {table.getRowModel().rows.map((row) => (
-                                <tr key={row.id} className="hover:bg-gray-50">
+                                <tr key={row.id} className="hover:bg-slate-50/50 transition-colors duration-150">
                                     {row.getVisibleCells().map((cell) => (
-                                        <td key={cell.id} className="px-6 py-2 whitespace-nowrap">
+                                        <td key={cell.id} className="p-0 whitespace-nowrap">
                                             {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                         </td>
                                     ))}
@@ -164,20 +204,34 @@ export const TopologyTable: React.FC<Props> = ({ data }) => {
                             ))}
                         </tbody>
                     </table>
+
+                    {treeData.length === 0 && !loading && (
+                        <div className="p-10 text-center text-slate-400 italic">No data available. Please sync.</div>
+                    )}
                 </div>
             </div>
 
-            {/* Side Panel */}
-            <div className={`transition-all duration-300 ${selectedInstance ? 'w-1/3' : 'w-0'} overflow-hidden border-l border-gray-200 bg-gray-50`}>
+            {/* Side Panel (Overlay or Split) */}
+            <div
+                className={clsx(
+                    "transition-all duration-300 ease-in-out bg-white shadow-xl z-20 overflow-hidden border-l border-slate-200 flex flex-col",
+                    selectedInstance ? "w-[400px] translate-x-0 opacity-100" : "w-0 translate-x-full opacity-0"
+                )}
+            >
                 {selectedInstance && (
-                    <div className="p-4 h-full overflow-auto">
-                        <button
-                            onClick={() => setSelectedInstance(null)}
-                            className="mb-4 text-gray-500 hover:text-gray-700"
-                        >
-                            ✕ Close
-                        </button>
-                        <DetailPanel instance={selectedInstance} />
+                    <div className="h-full flex flex-col">
+                        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                            <h3 className="font-bold text-slate-700">Instance Details</h3>
+                            <button
+                                onClick={() => setSelectedInstance(null)}
+                                className="text-slate-400 hover:text-slate-600 transition-colors"
+                            >
+                                <ChevronRight size={20} />
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto custom-scrollbar">
+                            <DetailPanel instance={selectedInstance} />
+                        </div>
                     </div>
                 )}
             </div>
