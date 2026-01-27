@@ -6,9 +6,9 @@ import {
     ColumnDef,
     flexRender,
 } from '@tanstack/react-table';
-import { RegionData, Instance } from './types';
+import { RegionData, Instance, Subnet, SecurityRule } from './types';
 import { DetailPanel } from './DetailPanel';
-import { ChevronRight, ChevronDown, Server, Box, Layers, MapPin, Search } from 'lucide-react';
+import { ChevronRight, ChevronDown, Server, Box, Layers, MapPin, Search, Shield } from 'lucide-react';
 import clsx from 'clsx';
 import { ResourceType } from './Sidebar';
 
@@ -56,7 +56,12 @@ export const TopologyTable: React.FC<Props> = ({ data, loading, resourceFilter =
                         };
                     }
 
-                    // For 'ec2' or 'sg' or 'all', we include instances
+                    // For 'sg' or 'ec2' filter, we want to flatten resources under VPC, so skip subnets here
+                    if (resourceFilter === 'sg' || resourceFilter === 'ec2') {
+                        return null;
+                    }
+
+                    // For 'all', we include instances nested in subnets
                     return {
                         kind: 'subnet' as const,
                         data: subnet,
@@ -68,13 +73,47 @@ export const TopologyTable: React.FC<Props> = ({ data, loading, resourceFilter =
                             subRows: [], // Leaf
                         })),
                     };
-                });
+                }).filter(Boolean) as any[]; // Filter nulls from SG/EC2 logic
+
+                // Special handling for 'sg' and 'ec2' filter to aggregate resources from all subnets
+                let vpcSubRows = subnets;
+                if (resourceFilter === 'sg') {
+                    const sgMap = new Map<string, { id: string; name: string }>();
+                    vpc.subnets.forEach((subnet: Subnet) => {
+                        subnet.instances.forEach((inst: Instance) => {
+                            inst.security_rules.forEach((rule: SecurityRule) => {
+                                if (rule.sg_id && !sgMap.has(rule.sg_id)) {
+                                    sgMap.set(rule.sg_id, { id: rule.sg_id, name: rule.sg_name });
+                                }
+                            });
+                        });
+                    });
+
+                    vpcSubRows = Array.from(sgMap.values()).map(sg => ({
+                        kind: 'security_group' as const,
+                        data: sg,
+                        region: region.region,
+                        subRows: [],
+                    }));
+                } else if (resourceFilter === 'ec2') {
+                    const allInstances: Instance[] = [];
+                    vpc.subnets.forEach((subnet: Subnet) => {
+                        allInstances.push(...subnet.instances);
+                    });
+
+                    vpcSubRows = allInstances.map(inst => ({
+                        kind: 'instance' as const,
+                        data: inst,
+                        region: region.region,
+                        subRows: [],
+                    }));
+                }
 
                 return {
                     kind: 'vpc' as const,
                     data: vpc,
                     region: region.region,
-                    subRows: subnets,
+                    subRows: vpcSubRows,
                 };
             });
 
@@ -159,6 +198,15 @@ export const TopologyTable: React.FC<Props> = ({ data, loading, resourceFilter =
                         );
                         icon = <Server size={14} className={node.data.state === 'running' ? "text-emerald-500" : "text-slate-400"} />;
                         style = "pl-20 border-l border-slate-100 hover:bg-indigo-50 cursor-pointer transition-colors";
+                    } else if (node.kind === 'security_group') {
+                        content = (
+                            <div className="flex flex-col leading-tight">
+                                <span className="font-medium text-slate-700">{node.data.name}</span>
+                                <span className="text-[10px] text-slate-400 font-mono">{node.data.id}</span>
+                            </div>
+                        );
+                        icon = <Shield size={14} className="text-orange-500" />;
+                        style = "pl-14 border-l border-slate-100 hover:bg-slate-50";
                     }
 
                     return (

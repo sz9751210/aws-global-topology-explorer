@@ -44,4 +44,5 @@ export type TopologyNode =
     | { kind: 'region'; data: RegionData }
     | { kind: 'vpc'; data: VPC; region: string }
     | { kind: 'subnet'; data: Subnet; region: string }
-    | { kind: 'instance'; data: Instance; region: string };
+    | { kind: 'instance'; data: Instance; region: string }
+    | { kind: 'security_group'; data: { id: string; name: string }; region: string };
