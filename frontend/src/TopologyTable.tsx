@@ -10,19 +10,24 @@ import { RegionData, Instance } from './types';
 import { DetailPanel } from './DetailPanel';
 import { ChevronRight, ChevronDown, Server, Box, Layers, MapPin, Search } from 'lucide-react';
 import clsx from 'clsx';
+import { ResourceType } from './Sidebar';
 
 interface Props {
     data: RegionData[];
     loading?: boolean;
+    resourceFilter?: ResourceType;
 }
 
-export const TopologyTable: React.FC<Props> = ({ data, loading }) => {
+export const TopologyTable: React.FC<Props> = ({ data, loading, resourceFilter = 'all' }) => {
     const [expanded, setExpanded] = useState({});
     const [selectedInstance, setSelectedInstance] = useState<Instance | null>(null);
 
 
     // Transform raw data into a tree structure compatible with our specific Node type
+    // resourceFilter is passed for future filtering logic
     const treeData = useMemo(() => {
+        // TODO: Implement actual filtering based on resourceFilter when needed
+        console.debug('Current resource filter:', resourceFilter);
         return data.map((region) => ({
             kind: 'region' as const,
             data: region,
@@ -43,7 +48,7 @@ export const TopologyTable: React.FC<Props> = ({ data, loading }) => {
                 })),
             })),
         }));
-    }, [data]);
+    }, [data, resourceFilter]);
 
     const columns = useMemo<ColumnDef<any>[]>(
         () => [
