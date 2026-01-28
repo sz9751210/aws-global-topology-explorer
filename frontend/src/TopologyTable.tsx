@@ -26,6 +26,14 @@ interface FlatInstance extends Instance {
     region: string;
 }
 
+// Flat Subnet type for flat view
+interface FlatSubnet extends Subnet {
+    vpc_name: string;
+    vpc_id: string;
+    region: string;
+    instance_count: number;
+}
+
 interface Props {
     data: RegionData[];
     loading?: boolean;
@@ -73,11 +81,34 @@ export const TopologyTable: React.FC<Props> = ({ data, loading, resourceFilter =
         return instances;
     }, [data, resourceFilter]);
 
+    // Flatten all Subnets across all regions for the flat Subnet view
+    const flatSubnetData = useMemo((): FlatSubnet[] => {
+        if (resourceFilter !== 'subnet') return [];
+
+        const subnets: FlatSubnet[] = [];
+        data.forEach((region) => {
+            region.vpcs.forEach((vpc) => {
+                vpc.subnets.forEach((subnet) => {
+                    subnets.push({
+                        ...subnet,
+                        vpc_name: vpc.name,
+                        vpc_id: vpc.id,
+                        region: region.region,
+                        instance_count: subnet.instances.length,
+                    });
+                });
+            });
+        });
+        return subnets;
+    }, [data, resourceFilter]);
+
     // Transform raw data into a tree structure compatible with our specific Node type
     // resourceFilter is passed for future filtering logic
     const treeData = useMemo(() => {
         // For EC2 filter, we use flatEc2Data instead
         if (resourceFilter === 'ec2') return [];
+        // For Subnet filter, we use flatSubnetData instead
+        if (resourceFilter === 'subnet') return [];
 
         return data.map((region) => {
             // Filter Logic:
@@ -98,16 +129,6 @@ export const TopologyTable: React.FC<Props> = ({ data, loading, resourceFilter =
                 }
 
                 const subnets = vpc.subnets.map((subnet) => {
-                    // For 'subnet' filter, we don't need instances
-                    if (resourceFilter === 'subnet') {
-                        return {
-                            kind: 'subnet' as const,
-                            data: subnet,
-                            region: region.region,
-                            subRows: [],
-                        };
-                    }
-
                     // For 'sg' filter, we want to flatten resources under VPC, so skip subnets here
                     if (resourceFilter === 'sg') {
                         return null;
@@ -179,8 +200,8 @@ export const TopologyTable: React.FC<Props> = ({ data, loading, resourceFilter =
     React.useEffect(() => {
         if (resourceFilter === 'all') {
             setExpanded({});
-        } else if (resourceFilter !== 'ec2') {
-            // For vpc, subnet, sg - expand all
+        } else if (resourceFilter !== 'ec2' && resourceFilter !== 'subnet') {
+            // For vpc, sg - expand all
             setExpanded(true);
         }
     }, [resourceFilter]);
@@ -260,6 +281,62 @@ export const TopologyTable: React.FC<Props> = ({ data, loading, resourceFilter =
                         <Terminal size={14} className="text-slate-500" />
                         SSH
                     </button>
+                ),
+            },
+        ],
+        []
+    );
+
+    // Columns for the flat Subnet table
+    const subnetTableColumns = useMemo<ColumnDef<FlatSubnet>[]>(
+        () => [
+            {
+                accessorKey: 'name',
+                header: 'NAME',
+                cell: ({ row }) => (
+                    <div className="flex flex-col leading-tight">
+                        <span className="font-medium text-slate-800">{row.original.name}</span>
+                        <span className="text-[10px] text-slate-400 font-mono">{row.original.id}</span>
+                    </div>
+                ),
+            },
+            {
+                accessorKey: 'cidr',
+                header: 'CIDR',
+                cell: ({ row }) => (
+                    <span className="font-mono text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">
+                        {row.original.cidr}
+                    </span>
+                ),
+            },
+            {
+                accessorKey: 'az',
+                header: 'ZONE',
+                cell: ({ row }) => <span className="text-slate-600 text-sm">{row.original.az}</span>,
+            },
+            {
+                accessorKey: 'vpc_name',
+                header: 'VPC',
+                cell: ({ row }) => (
+                    <div className="flex flex-col leading-tight">
+                        <span className="text-indigo-600 text-sm">{row.original.vpc_name}</span>
+                        <span className="text-[10px] text-slate-400 font-mono">{row.original.vpc_id}</span>
+                    </div>
+                ),
+            },
+            {
+                accessorKey: 'region',
+                header: 'REGION',
+                cell: ({ row }) => <span className="text-slate-600 text-sm">{row.original.region}</span>,
+            },
+            {
+                accessorKey: 'instance_count',
+                header: 'INSTANCES',
+                cell: ({ row }) => (
+                    <span className="flex items-center gap-1.5 text-slate-600 text-sm">
+                        <Server size={14} className="text-slate-400" />
+                        {row.original.instance_count}
+                    </span>
                 ),
             },
         ],
@@ -398,6 +475,13 @@ export const TopologyTable: React.FC<Props> = ({ data, loading, resourceFilter =
         getCoreRowModel: getCoreRowModel(),
     });
 
+    // Subnet flat table
+    const subnetTable = useReactTable({
+        data: flatSubnetData,
+        columns: subnetTableColumns,
+        getCoreRowModel: getCoreRowModel(),
+    });
+
     // Tree table
     const treeTable = useReactTable({
         data: treeData,
@@ -413,6 +497,8 @@ export const TopologyTable: React.FC<Props> = ({ data, loading, resourceFilter =
 
     // Use the appropriate table based on filter
     const isEc2View = resourceFilter === 'ec2';
+    const isSubnetView = resourceFilter === 'subnet';
+    const isTreeView = !isEc2View && !isSubnetView;
 
     return (
         <div className="flex flex-1 h-full overflow-hidden bg-white">
@@ -459,6 +545,35 @@ export const TopologyTable: React.FC<Props> = ({ data, loading, resourceFilter =
                                 ))}
                             </tbody>
                         </table>
+                    ) : isSubnetView ? (
+                        /* Subnet Flat Table */
+                        <table className="min-w-full divide-y divide-slate-100">
+                            <thead className="bg-slate-50 sticky top-0 z-10 shadow-sm">
+                                {subnetTable.getHeaderGroups().map((headerGroup: HeaderGroup<FlatSubnet>) => (
+                                    <tr key={headerGroup.id}>
+                                        {headerGroup.headers.map((header: Header<FlatSubnet, unknown>) => (
+                                            <th
+                                                key={header.id}
+                                                className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200"
+                                            >
+                                                {flexRender(header.column.columnDef.header, header.getContext())}
+                                            </th>
+                                        ))}
+                                    </tr>
+                                ))}
+                            </thead>
+                            <tbody className="bg-white divide-y divide-slate-50">
+                                {subnetTable.getRowModel().rows.map((row: Row<FlatSubnet>) => (
+                                    <tr key={row.id} className="hover:bg-slate-50/50 transition-colors duration-150">
+                                        {row.getVisibleCells().map((cell: Cell<FlatSubnet, unknown>) => (
+                                            <td key={cell.id} className="px-4 py-3 whitespace-nowrap">
+                                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                            </td>
+                                        ))}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     ) : (
                         /* Tree Table */
                         <table className="min-w-full divide-y divide-slate-100">
@@ -491,9 +606,13 @@ export const TopologyTable: React.FC<Props> = ({ data, loading, resourceFilter =
                         </table>
                     )}
 
-                    {((isEc2View && flatEc2Data.length === 0) || (!isEc2View && treeData.length === 0)) && !loading && (
-                        <div className="p-10 text-center text-slate-400 italic">No data available. Please sync.</div>
-                    )}
+
+                    {((isEc2View && flatEc2Data.length === 0) ||
+                        (isSubnetView && flatSubnetData.length === 0) ||
+                        (isTreeView && treeData.length === 0)) &&
+                        !loading && (
+                            <div className="p-10 text-center text-slate-400 italic">No data available. Please sync.</div>
+                        )}
                 </div>
             </div>
 
