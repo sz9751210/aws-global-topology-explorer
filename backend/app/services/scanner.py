@@ -1,16 +1,19 @@
 import boto3
 import concurrent.futures
-import json
+import logging
 from botocore.exceptions import ClientError
+
+logger = logging.getLogger(__name__)
 
 def get_enabled_regions():
     """Fetches all opted-in regions."""
+    # Use a default region to list regions. us-east-1 is standard for this.
     ec2 = boto3.client('ec2', region_name='us-east-1')
     try:
         response = ec2.describe_regions(Filters=[{'Name': 'opt-in-status', 'Values': ['opt-in-not-required', 'opted-in']}])
         return [r['RegionName'] for r in response['Regions']]
     except ClientError as e:
-        print(f"Error fetching regions: {e}")
+        logger.error(f"Error fetching regions: {e}")
         return []
 
 def format_security_rule(rule):
@@ -40,9 +43,13 @@ def format_security_rule(rule):
 
 def scan_region(region):
     """Scans a single region for VPCs, Subnets, EC2s, and SGs."""
-    print(f"Scanning region: {region}...")
-    session = boto3.Session(region_name=region)
-    ec2 = session.client('ec2')
+    logger.info(f"Scanning region: {region}...")
+    try:
+        session = boto3.Session(region_name=region)
+        ec2 = session.client('ec2')
+    except Exception as e:
+        logger.error(f"Failed to create session for {region}: {e}")
+        return {'region': region, 'error': str(e), 'vpcs': []}
     
     try:
         # 1. Fetch all Security Groups first
@@ -167,27 +174,5 @@ def scan_region(region):
         }
 
     except Exception as e:
-        print(f"Error scanning {region}: {e}")
+        logger.error(f"Error scanning {region}: {e}")
         return {'region': region, 'error': str(e), 'vpcs': []}
-
-def main():
-    regions = get_enabled_regions()
-    if not regions:
-        print("No regions found or credentials invalid.")
-        return
-
-    results = []
-    # Use ThreadPool to scan regions in parallel
-    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-        future_to_region = {executor.submit(scan_region, r): r for r in regions}
-        for future in concurrent.futures.as_completed(future_to_region):
-            results.append(future.result())
-            
-    # Save to file
-    with open('aws_topology.json', 'w') as f:
-        json.dump(results, f, indent=2)
-        
-    print(f"Scan complete. Data saved to aws_topology.json")
-
-if __name__ == '__main__':
-    main()

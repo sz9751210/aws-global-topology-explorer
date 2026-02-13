@@ -1,19 +1,10 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import APIRouter
 import concurrent.futures
-from scanner import get_enabled_regions, scan_region
+from app.services.scanner import get_enabled_regions, scan_region
 
-app = FastAPI(title="AWS Global Topology Explorer API")
+router = APIRouter()
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-@app.get("/api/topology")
+@router.get("/topology")
 def get_topology():
     regions = get_enabled_regions()
     if not regions:
@@ -32,7 +23,3 @@ def get_topology():
                 results.append({'region': region, 'error': str(e), 'vpcs': []})
     
     return results
-
-@app.get("/health")
-def health():
-    return {"status": "ok"}

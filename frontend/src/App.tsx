@@ -1,20 +1,25 @@
 import { useState, useMemo } from 'react';
 import { TopologyTable } from './TopologyTable';
-import { RegionData } from './types';
-import { RefreshCw, LayoutDashboard, AlertCircle } from 'lucide-react';
+import { useTopology } from './hooks/useTopology';
+import { Dashboard } from './Dashboard';
+import { TopologyMap } from './TopologyMap';
+import { AlertCircle, BarChart3, LayoutDashboard, Map as MapIcon, RefreshCw, Table2 } from 'lucide-react';
 import { Sidebar, ResourceType } from './Sidebar';
 import clsx from 'clsx';
 import './index.css';
 
+type ViewType = 'explorer' | 'map' | 'dashboard';
+
 function App() {
-    const [data, setData] = useState<RegionData[]>([]);
-    const [loading, setLoading] = useState<boolean>(false);
-    const [error, setError] = useState<string | null>(null);
-    const [lastScanned, setLastScanned] = useState<Date | null>(null);
+    // View State
+    const [currentView, setCurrentView] = useState<ViewType>('explorer');
 
     // Filters
     const [selectedRegion, setSelectedRegion] = useState<string>('all');
     const [selectedResource, setSelectedResource] = useState<ResourceType>('all');
+
+    // Data Access
+    const { data, loading, error, lastScanned, scan } = useTopology();
 
     const availableRegions = useMemo(() => data.map((r) => r.region), [data]);
 
@@ -25,28 +30,6 @@ function App() {
         return data.filter((r) => r.region === selectedRegion);
     }, [data, selectedRegion]);
 
-    const fetchTopology = () => {
-        setLoading(true);
-        setError(null);
-        fetch('/api/topology')
-            .then((res) => {
-                if (!res.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                return res.json();
-            })
-            .then((fetchedData) => {
-                setData(fetchedData);
-                setLastScanned(new Date());
-                setLoading(false);
-            })
-            .catch((err) => {
-                console.error('Failed to fetch topology:', err);
-                setError('Failed to load data. Ensure backend is running and AWS credentials are valid.');
-                setLoading(false);
-            });
-    };
-
     return (
         <div className="flex h-screen bg-slate-100 text-slate-800 font-sans">
             {/* Sidebar */}
@@ -55,16 +38,59 @@ function App() {
                 selectedRegion={selectedRegion}
                 onRegionChange={setSelectedRegion}
                 selectedResource={selectedResource}
-                onResourceChange={setSelectedResource}
+                onResourceChange={(resource) => {
+                    setSelectedResource(resource);
+                    // Standardize view: if user clicks a resource filter, switch to table/explorer if not already, 
+                    // unless they are in map mode which might support filtering (future). 
+                    // For now, let's keep them in their current view but Explorer makes most sense for specific resource lists.
+                    if (currentView === 'dashboard') {
+                        setCurrentView('explorer');
+                    }
+                }}
             />
 
             {/* Main Content */}
             <div className="flex-1 flex flex-col min-w-0">
                 {/* Header */}
                 <header className="flex items-center justify-between px-6 py-4 bg-white border-b border-slate-200 shadow-sm z-10">
-                    <div>
-                        <h1 className="text-xl font-bold text-slate-900 tracking-tight">AWS Global Topology Explorer</h1>
-                        <p className="text-xs text-slate-500 font-medium">Internal Developer Platform</p>
+                    <div className="flex items-center gap-8">
+                        <div>
+                            <h1 className="text-xl font-bold text-slate-900 tracking-tight">AWS Global Topology Explorer</h1>
+                            <p className="text-xs text-slate-500 font-medium">Internal Developer Platform</p>
+                        </div>
+
+                        {/* View Navigation */}
+                        {data.length > 0 && (
+                            <div className="flex bg-slate-100 p-1 rounded-lg">
+                                <button
+                                    onClick={() => setCurrentView('explorer')}
+                                    className={clsx(
+                                        "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all",
+                                        currentView === 'explorer' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                                    )}
+                                >
+                                    <Table2 size={16} /> Explorer
+                                </button>
+                                <button
+                                    onClick={() => setCurrentView('map')}
+                                    className={clsx(
+                                        "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all",
+                                        currentView === 'map' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                                    )}
+                                >
+                                    <MapIcon size={16} /> Map
+                                </button>
+                                <button
+                                    onClick={() => setCurrentView('dashboard')}
+                                    className={clsx(
+                                        "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all",
+                                        currentView === 'dashboard' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                                    )}
+                                >
+                                    <BarChart3 size={16} /> Dashboard
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex items-center gap-4">
@@ -75,7 +101,7 @@ function App() {
                             </div>
                         )}
                         <button
-                            onClick={fetchTopology}
+                            onClick={scan}
                             disabled={loading}
                             className={clsx(
                                 'flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-all',
@@ -109,15 +135,33 @@ function App() {
                                 <AlertCircle size={48} className="mx-auto text-red-500 mb-4" />
                                 <h3 className="text-lg font-bold text-red-700 mb-2">Scan Failed</h3>
                                 <p className="text-red-600 text-sm mb-4">{error}</p>
-                                <button onClick={() => setError(null)} className="text-red-700 font-medium text-sm hover:underline">
-                                    Dismiss
+                                {/* Error state is managed by hook now, but we can't clear it easily without exposing setError. 
+                                    For now just hide the button or re-scan. 
+                                    Let's validly fix this by just re-scanning on dismiss or similar? 
+                                    Or just show the error. Detailed panel usually better.
+                                    The original code had `setError(null)`. 
+                                    Let's leave valid "Dismiss" logic for later or just re-scan. 
+                                    For now, we just pass scan to retry.
+                                */}
+                                <button onClick={scan} className="text-red-700 font-medium text-sm hover:underline">
+                                    Retry
                                 </button>
                             </div>
                         </div>
                     )}
 
                     {filteredData.length > 0 && (
-                        <TopologyTable data={filteredData} loading={loading} resourceFilter={selectedResource} />
+                        <>
+                            {currentView === 'explorer' && (
+                                <TopologyTable data={filteredData} loading={loading} resourceFilter={selectedResource} />
+                            )}
+                            {currentView === 'dashboard' && (
+                                <Dashboard data={filteredData} />
+                            )}
+                            {currentView === 'map' && (
+                                <TopologyMap data={filteredData} />
+                            )}
+                        </>
                     )}
                 </main>
 
@@ -138,7 +182,7 @@ function App() {
                                     : 'System Idle'}
                         </span>
                     </div>
-                    <div>v1.0.0</div>
+                    <div>v2.0.0 - Enterprise Edition</div>
                 </footer>
             </div>
         </div>
