@@ -15,6 +15,7 @@ export interface Instance {
     state: string;
     private_ip: string;
     public_ip?: string;
+    subnet_id?: string;
     security_rules: SecurityRule[];
 }
 

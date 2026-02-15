@@ -16,12 +16,12 @@ vi.spyOn(useTopologyHook, 'useTopology').mockReturnValue({
 describe('App Component', () => {
     it('renders header title', () => {
         render(<App />);
-        expect(screen.getByRole('heading', { name: /AWS Global Topology Explorer/i })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: /Topology Explorer/i })).toBeInTheDocument();
     });
 
     it('triggers scan on button click', () => {
         render(<App />);
-        const button = screen.getByText(/Sync Global Topology/i);
+        const button = screen.getByTestId('sync-button');
         fireEvent.click(button);
         expect(mockScan).toHaveBeenCalled();
     });

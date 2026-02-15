@@ -46,8 +46,8 @@ const StatusIndicator: React.FC<{ state: string }> = ({ state }) => {
     return (
         <div className="flex items-center gap-2">
             <span className={clsx(
-                "w-2 h-2 rounded-full",
-                isRunning ? "bg-green-500" : "bg-gray-400"
+                "w-2 h-2 rounded-full shadow-[0_0_8px_currentColor]",
+                isRunning ? "bg-emerald-500 text-emerald-500" : "bg-slate-500 text-slate-500"
             )}></span>
         </div>
     );
@@ -220,12 +220,13 @@ export const TopologyTable: React.FC<Props> = ({ data, loading, resourceFilter =
                 header: 'NAME',
                 cell: ({ row }) => (
                     <button
-                        className="text-left w-full group hover:text-indigo-700"
+                        className="text-left w-full group hover:text-indigo-400"
                         onClick={() => setSelectedInstance(row.original)}
                     >
-                        <span className="font-medium text-slate-800 group-hover:text-indigo-700">
+                        <span className="font-medium text-slate-200 group-hover:text-indigo-400 transition-colors">
                             {row.original.name || row.original.id}
                         </span>
+                        <div className="h-px bg-current w-0 group-hover:w-full transition-all duration-300 opacity-50"></div>
                     </button>
                 ),
             },
@@ -413,11 +414,11 @@ export const TopologyTable: React.FC<Props> = ({ data, loading, resourceFilter =
                     }
 
                     return (
-                        <div className={`flex items-center gap-3 py-2 px-4 h-full ${style}`}>
+                        <div className={`flex items-center gap-3 py-3 px-4 h-full ${style}`}>
                             {row.getCanExpand() ? (
                                 <button
                                     onClick={row.getToggleExpandedHandler()}
-                                    className="p-1 hover:bg-slate-200 rounded text-slate-500 transition-colors focus:outline-none"
+                                    className="p-1 hover:bg-white/10 rounded text-slate-500 hover:text-white transition-colors focus:outline-none"
                                 >
                                     {row.getIsExpanded() ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                                 </button>
@@ -501,135 +502,140 @@ export const TopologyTable: React.FC<Props> = ({ data, loading, resourceFilter =
     const isTreeView = !isEc2View && !isSubnetView;
 
     return (
-        <div className="flex flex-1 h-full overflow-hidden bg-white">
+        <div className="flex flex-1 h-full overflow-hidden">
             {/* Main Table Area */}
-            <div className="flex-1 flex flex-col min-w-0 border-r border-slate-200">
+            <div className="flex-1 flex flex-col min-w-0">
                 {/* Search Bar (Visual Only for now) */}
-                <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
-                    <Search size={16} className="text-slate-400" />
+                <div className="px-6 py-4 border-b border-white/5 flex items-center gap-3 bg-white/[0.02]">
+                    <Search size={18} className="text-slate-500" />
                     <input
                         type="text"
                         placeholder="Filter logic to be implemented..."
-                        className="bg-transparent border-none focus:ring-0 text-sm w-full placeholder-slate-400 text-slate-600"
+                        className="bg-transparent border-none focus:ring-0 text-sm w-full placeholder-slate-600 text-slate-200 outline-none"
                         disabled
                     />
                 </div>
 
-                <div className="flex-1 overflow-auto custom-scrollbar">
-                    {isEc2View ? (
-                        /* EC2 Flat Table */
-                        <table className="min-w-full divide-y divide-slate-100">
-                            <thead className="bg-slate-50 sticky top-0 z-10 shadow-sm">
-                                {ec2Table.getHeaderGroups().map((headerGroup: HeaderGroup<FlatInstance>) => (
-                                    <tr key={headerGroup.id}>
-                                        {headerGroup.headers.map((header: Header<FlatInstance, unknown>) => (
-                                            <th
-                                                key={header.id}
-                                                className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200"
-                                            >
-                                                {flexRender(header.column.columnDef.header, header.getContext())}
-                                            </th>
-                                        ))}
-                                    </tr>
-                                ))}
-                            </thead>
-                            <tbody className="bg-white divide-y divide-slate-50">
-                                {ec2Table.getRowModel().rows.map((row: Row<FlatInstance>) => (
-                                    <tr key={row.id} className="hover:bg-slate-50/50 transition-colors duration-150">
-                                        {row.getVisibleCells().map((cell: Cell<FlatInstance, unknown>) => (
-                                            <td key={cell.id} className="px-4 py-3 whitespace-nowrap">
-                                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                            </td>
-                                        ))}
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    ) : isSubnetView ? (
-                        /* Subnet Flat Table */
-                        <table className="min-w-full divide-y divide-slate-100">
-                            <thead className="bg-slate-50 sticky top-0 z-10 shadow-sm">
-                                {subnetTable.getHeaderGroups().map((headerGroup: HeaderGroup<FlatSubnet>) => (
-                                    <tr key={headerGroup.id}>
-                                        {headerGroup.headers.map((header: Header<FlatSubnet, unknown>) => (
-                                            <th
-                                                key={header.id}
-                                                className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200"
-                                            >
-                                                {flexRender(header.column.columnDef.header, header.getContext())}
-                                            </th>
-                                        ))}
-                                    </tr>
-                                ))}
-                            </thead>
-                            <tbody className="bg-white divide-y divide-slate-50">
-                                {subnetTable.getRowModel().rows.map((row: Row<FlatSubnet>) => (
-                                    <tr key={row.id} className="hover:bg-slate-50/50 transition-colors duration-150">
-                                        {row.getVisibleCells().map((cell: Cell<FlatSubnet, unknown>) => (
-                                            <td key={cell.id} className="px-4 py-3 whitespace-nowrap">
-                                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                            </td>
-                                        ))}
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    ) : (
-                        /* Tree Table */
-                        <table className="min-w-full divide-y divide-slate-100">
-                            <thead className="bg-slate-50 sticky top-0 z-10 shadow-sm">
-                                {treeTable.getHeaderGroups().map((headerGroup) => (
-                                    <tr key={headerGroup.id}>
-                                        {headerGroup.headers.map((header) => (
-                                            <th
-                                                key={header.id}
-                                                className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200"
-                                                style={{ width: header.id === 'name' ? '60%' : '40%' }}
-                                            >
-                                                {flexRender(header.column.columnDef.header, header.getContext())}
-                                            </th>
-                                        ))}
-                                    </tr>
-                                ))}
-                            </thead>
-                            <tbody className="bg-white divide-y divide-slate-50">
-                                {treeTable.getRowModel().rows.map((row) => (
-                                    <tr key={row.id} className="hover:bg-slate-50/50 transition-colors duration-150">
-                                        {row.getVisibleCells().map((cell) => (
-                                            <td key={cell.id} className="p-0 whitespace-nowrap">
-                                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                            </td>
-                                        ))}
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    )}
-
-
-                    {((isEc2View && flatEc2Data.length === 0) ||
-                        (isSubnetView && flatSubnetData.length === 0) ||
-                        (isTreeView && treeData.length === 0)) &&
-                        !loading && (
-                            <div className="p-10 text-center text-slate-400 italic">No data available. Please sync.</div>
+                <div className="flex-1 overflow-auto custom-scrollbar p-6">
+                    <div className="glass-card rounded-2xl overflow-hidden border border-white/5">
+                        {isEc2View ? (
+                            /* EC2 Flat Table */
+                            <table className="min-w-full divide-y divide-white/5">
+                                <thead className="bg-white/5">
+                                    {ec2Table.getHeaderGroups().map((headerGroup: HeaderGroup<FlatInstance>) => (
+                                        <tr key={headerGroup.id}>
+                                            {headerGroup.headers.map((header: Header<FlatInstance, unknown>) => (
+                                                <th
+                                                    key={header.id}
+                                                    className="px-6 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest"
+                                                >
+                                                    {flexRender(header.column.columnDef.header, header.getContext())}
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    ))}
+                                </thead>
+                                <tbody className="divide-y divide-white/5 bg-transparent">
+                                    {ec2Table.getRowModel().rows.map((row: Row<FlatInstance>) => (
+                                        <tr key={row.id} className="hover:bg-white/5 transition-colors duration-150 group">
+                                            {row.getVisibleCells().map((cell: Cell<FlatInstance, unknown>) => (
+                                                <td key={cell.id} className="px-6 py-4 whitespace-nowrap text-sm text-slate-300 group-hover:text-white">
+                                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                                </td>
+                                            ))}
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        ) : isSubnetView ? (
+                            /* Subnet Flat Table */
+                            <table className="min-w-full divide-y divide-white/5">
+                                <thead className="bg-white/5">
+                                    {subnetTable.getHeaderGroups().map((headerGroup: HeaderGroup<FlatSubnet>) => (
+                                        <tr key={headerGroup.id}>
+                                            {headerGroup.headers.map((header: Header<FlatSubnet, unknown>) => (
+                                                <th
+                                                    key={header.id}
+                                                    className="px-6 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest"
+                                                >
+                                                    {flexRender(header.column.columnDef.header, header.getContext())}
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    ))}
+                                </thead>
+                                <tbody className="divide-y divide-white/5 bg-transparent">
+                                    {subnetTable.getRowModel().rows.map((row: Row<FlatSubnet>) => (
+                                        <tr key={row.id} className="hover:bg-white/5 transition-colors duration-150 group">
+                                            {row.getVisibleCells().map((cell: Cell<FlatSubnet, unknown>) => (
+                                                <td key={cell.id} className="px-6 py-4 whitespace-nowrap text-sm text-slate-300 group-hover:text-white">
+                                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                                </td>
+                                            ))}
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        ) : (
+                            /* Tree Table */
+                            <table className="min-w-full divide-y divide-white/5">
+                                <thead className="bg-white/5">
+                                    {treeTable.getHeaderGroups().map((headerGroup) => (
+                                        <tr key={headerGroup.id}>
+                                            {headerGroup.headers.map((header) => (
+                                                <th
+                                                    key={header.id}
+                                                    className="px-6 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest"
+                                                    style={{ width: header.id === 'name' ? '60%' : '40%' }}
+                                                >
+                                                    {flexRender(header.column.columnDef.header, header.getContext())}
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    ))}
+                                </thead>
+                                <tbody className="divide-y divide-white/5 bg-transparent">
+                                    {treeTable.getRowModel().rows.map((row) => (
+                                        <tr key={row.id} className="hover:bg-white/5 transition-colors duration-150 group">
+                                            {row.getVisibleCells().map((cell) => (
+                                                <td key={cell.id} className="p-0 whitespace-nowrap text-sm text-slate-300 group-hover:text-white">
+                                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                                </td>
+                                            ))}
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         )}
+
+
+                        {((isEc2View && flatEc2Data.length === 0) ||
+                            (isSubnetView && flatSubnetData.length === 0) ||
+                            (isTreeView && treeData.length === 0)) &&
+                            !loading && (
+                                <div className="p-10 text-center text-slate-500 italic">No data available. Please sync.</div>
+                            )}
+                    </div>
                 </div>
             </div>
 
             {/* Side Panel (Overlay or Split) */}
             <div
                 className={clsx(
-                    "transition-all duration-300 ease-in-out bg-white shadow-xl z-20 overflow-hidden border-l border-slate-200 flex flex-col",
-                    selectedInstance ? "w-[400px] translate-x-0 opacity-100" : "w-0 translate-x-full opacity-0"
+                    "transition-all duration-300 ease-in-out bg-[#0f172a] shadow-2xl z-20 overflow-hidden border-l border-white/5 flex flex-col",
+                    selectedInstance ? "w-[450px] translate-x-0 opacity-100" : "w-0 translate-x-full opacity-0"
                 )}
             >
                 {selectedInstance && (
                     <div className="h-full flex flex-col">
-                        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                            <h3 className="font-bold text-slate-700">Instance Details</h3>
+                        <div className="px-8 py-6 border-b border-white/5 flex justify-between items-center bg-white/[0.02]">
+                            <div>
+                                <h3 className="font-bold text-white text-lg">Instance Details</h3>
+                                <p className="text-xs text-slate-500 font-mono mt-1">{selectedInstance.id}</p>
+                            </div>
                             <button
                                 onClick={() => setSelectedInstance(null)}
-                                className="text-slate-400 hover:text-slate-600 transition-colors"
+                                className="text-slate-500 hover:text-white transition-colors bg-white/5 p-2 rounded-lg"
                             >
                                 <ChevronRight size={20} />
                             </button>

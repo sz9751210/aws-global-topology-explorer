@@ -31,8 +31,8 @@ function App() {
     }, [data, selectedRegion]);
 
     return (
-        <div className="flex h-screen bg-slate-100 text-slate-800 font-sans">
-            {/* Sidebar */}
+        <div className="flex h-screen overflow-hidden p-4 gap-4 selection:bg-indigo-500/30">
+            {/* Sidebar - Now floating */}
             <Sidebar
                 regions={availableRegions}
                 selectedRegion={selectedRegion}
@@ -40,33 +40,33 @@ function App() {
                 selectedResource={selectedResource}
                 onResourceChange={(resource) => {
                     setSelectedResource(resource);
-                    // Standardize view: if user clicks a resource filter, switch to table/explorer if not already, 
-                    // unless they are in map mode which might support filtering (future). 
-                    // For now, let's keep them in their current view but Explorer makes most sense for specific resource lists.
                     if (currentView === 'dashboard') {
                         setCurrentView('explorer');
                     }
                 }}
             />
 
-            {/* Main Content */}
-            <div className="flex-1 flex flex-col min-w-0">
+            {/* Main Content Area */}
+            <div className="flex-1 flex flex-col min-w-0 glass-panel rounded-2xl overflow-hidden relative">
                 {/* Header */}
-                <header className="flex items-center justify-between px-6 py-4 bg-white border-b border-slate-200 shadow-sm z-10">
+                <header className="flex items-center justify-between px-8 py-5 border-b border-white/5 bg-white/[0.02]">
                     <div className="flex items-center gap-8">
                         <div>
-                            <h1 className="text-xl font-bold text-slate-900 tracking-tight">AWS Global Topology Explorer</h1>
-                            <p className="text-xs text-slate-500 font-medium">Internal Developer Platform</p>
+                            <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-3">
+                                <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
+                                {currentView === 'dashboard' ? 'Overview' :
+                                    currentView === 'map' ? 'Global Network Map' : 'Resource Explorer'}
+                            </h2>
                         </div>
 
                         {/* View Navigation */}
                         {data.length > 0 && (
-                            <div className="flex bg-slate-100 p-1 rounded-lg">
+                            <div className="flex bg-slate-900/50 p-1 rounded-xl border border-white/5">
                                 <button
                                     onClick={() => setCurrentView('explorer')}
                                     className={clsx(
-                                        "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all",
-                                        currentView === 'explorer' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                                        "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                                        currentView === 'explorer' ? "bg-indigo-600 shadow-lg shadow-indigo-500/25 text-white" : "text-slate-400 hover:text-white hover:bg-white/5"
                                     )}
                                 >
                                     <Table2 size={16} /> Explorer
@@ -74,8 +74,8 @@ function App() {
                                 <button
                                     onClick={() => setCurrentView('map')}
                                     className={clsx(
-                                        "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all",
-                                        currentView === 'map' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                                        "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                                        currentView === 'map' ? "bg-indigo-600 shadow-lg shadow-indigo-500/25 text-white" : "text-slate-400 hover:text-white hover:bg-white/5"
                                     )}
                                 >
                                     <MapIcon size={16} /> Map
@@ -83,8 +83,8 @@ function App() {
                                 <button
                                     onClick={() => setCurrentView('dashboard')}
                                     className={clsx(
-                                        "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all",
-                                        currentView === 'dashboard' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                                        "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                                        currentView === 'dashboard' ? "bg-indigo-600 shadow-lg shadow-indigo-500/25 text-white" : "text-slate-400 hover:text-white hover:bg-white/5"
                                     )}
                                 >
                                     <BarChart3 size={16} /> Dashboard
@@ -93,25 +93,26 @@ function App() {
                         )}
                     </div>
 
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-6">
                         {lastScanned && (
-                            <div className="text-xs text-slate-500 text-right mr-2">
-                                <p>Last Synced</p>
-                                <p className="font-mono">{lastScanned.toLocaleTimeString()}</p>
+                            <div className="text-xs text-slate-400 text-right">
+                                <p className="opacity-60 uppercase tracking-widest text-[10px]">Last Synced</p>
+                                <p className="font-mono text-indigo-300">{lastScanned.toLocaleTimeString()}</p>
                             </div>
                         )}
                         <button
+                            data-testid="sync-button"
                             onClick={scan}
                             disabled={loading}
                             className={clsx(
-                                'flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-all',
+                                'flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm transition-all border border-white/10',
                                 loading
-                                    ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                                    : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-md hover:shadow-lg active:scale-95'
+                                    ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                                    : 'bg-white/10 text-white hover:bg-white/20 hover:scale-105 active:scale-95 hover:shadow-[0_0_20px_rgba(99,102,241,0.3)]'
                             )}
                         >
-                            <RefreshCw size={16} className={clsx({ 'animate-spin': loading })} />
-                            {loading ? 'Scanning...' : 'Sync Global Topology'}
+                            <RefreshCw size={18} className={clsx({ 'animate-spin': loading })} />
+                            {loading ? 'Scanning...' : 'Sync Data'}
                         </button>
                     </div>
                 </header>
@@ -120,31 +121,31 @@ function App() {
                 <main className="flex-1 overflow-hidden relative">
                     {data.length === 0 && !loading && !error && (
                         <div className="flex flex-col items-center justify-center h-full text-slate-400">
-                            <LayoutDashboard size={64} className="mb-4 text-slate-300" />
-                            <h2 className="text-2xl font-bold text-slate-600 mb-2">Ready to Explore</h2>
-                            <p className="max-w-md text-center mb-8">
-                                Click the <span className="font-bold text-indigo-600">Sync</span> button to start scanning your AWS
-                                Organization across all regions.
+                            <div className="p-8 rounded-full bg-white/5 border border-white/5 mb-6 animate-pulse">
+                                <LayoutDashboard size={64} className="text-slate-500" />
+                            </div>
+                            <h2 className="text-3xl font-bold text-white mb-3">Ready to Explore</h2>
+                            <p className="max-w-md text-center text-slate-400 mb-8 leading-relaxed">
+                                Click the <span className="font-bold text-indigo-400">Sync Data</span> button to scan your AWS Organization and visualize your global infrastructure.
                             </p>
                         </div>
                     )}
 
                     {error && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm z-50">
-                            <div className="bg-red-50 p-6 rounded-xl border border-red-200 shadow-xl max-w-lg text-center">
-                                <AlertCircle size={48} className="mx-auto text-red-500 mb-4" />
-                                <h3 className="text-lg font-bold text-red-700 mb-2">Scan Failed</h3>
-                                <p className="text-red-600 text-sm mb-4">{error}</p>
-                                {/* Error state is managed by hook now, but we can't clear it easily without exposing setError. 
-                                    For now just hide the button or re-scan. 
-                                    Let's validly fix this by just re-scanning on dismiss or similar? 
-                                    Or just show the error. Detailed panel usually better.
-                                    The original code had `setError(null)`. 
-                                    Let's leave valid "Dismiss" logic for later or just re-scan. 
-                                    For now, we just pass scan to retry.
-                                */}
-                                <button onClick={scan} className="text-red-700 font-medium text-sm hover:underline">
-                                    Retry
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-50">
+                            <div className="bg-[#1a1c2e] p-8 rounded-2xl border border-red-500/30 shadow-2xl max-w-lg text-center">
+                                <div className="mx-auto w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mb-6">
+                                    <AlertCircle size={32} className="text-red-500" />
+                                </div>
+                                <h3 className="text-xl font-bold text-white mb-3">Scan Failed</h3>
+                                <p className="text-red-300/80 text-sm mb-6 leading-relaxed bg-red-950/30 p-4 rounded-lg border border-red-500/10 font-mono">
+                                    {error}
+                                </p>
+                                <button
+                                    onClick={scan}
+                                    className="px-6 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg font-medium transition-colors border border-red-400/30"
+                                >
+                                    Retry Connection
                                 </button>
                             </div>
                         </div>
@@ -164,26 +165,6 @@ function App() {
                         </>
                     )}
                 </main>
-
-                {/* Status Bar */}
-                <footer className="bg-white border-t border-slate-200 px-6 py-2 text-xs text-slate-500 flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                        <div
-                            className={clsx(
-                                'w-2 h-2 rounded-full',
-                                loading ? 'bg-amber-500 animate-pulse' : data.length > 0 ? 'bg-green-500' : 'bg-slate-300'
-                            )}
-                        ></div>
-                        <span>
-                            {loading
-                                ? 'Scanning AWS APIs...'
-                                : data.length > 0
-                                    ? `Discovered ${data.reduce((acc, r) => acc + r.vpcs.length, 0)} VPCs across ${data.length} Regions`
-                                    : 'System Idle'}
-                        </span>
-                    </div>
-                    <div>v2.0.0 - Enterprise Edition</div>
-                </footer>
             </div>
         </div>
     );
